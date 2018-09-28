@@ -1,0 +1,124 @@
+﻿
+@{
+    ViewBag.Title = "Index";
+}
+
+<h2></h2>
+
+<div id="calender"></div>
+
+<div style="margin-top:1%;width:100%;">@Html.ActionLink("Add Event", "AddEvent", "Home", new { area = "" }, new { @class = "btn btn-primary" })</div>
+
+<div id="myModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title"><span id="eventTitle"></span></h4>
+            </div>
+            <div class="modal-body">
+                <button type="button" id="DeleteButton" class="btn btn btn-danger btn btn-sm pull-right">Delete</button>
+                <p id="pDetails"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.css" rel="stylesheet" />
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.print.css" rel="stylesheet" media="print" />
+
+@section Scripts{
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            var events = [];
+            var selectedItem = null;
+            GetEvents();
+            function GetEvents() {
+                var events = [];
+                $.ajax({
+                    type: "GET",
+                    url: "/home/GetEvents",
+                    success: function (data) {
+                        $.each(data, function (key, veri) {//jquery foreach
+                            events.push({
+                                id:veri.Id,
+                                title: veri.Subject,
+                                description: veri.Description,
+                                start: veri.Start,
+                                end: veri.End,
+                                color: veri.ThemeColor,
+                                allDay: veri.IsFullDay
+                            });
+                        });
+                        GenerateCalendar(events);
+                    },
+                    error: function (error) {
+                        alert('error occured while fetching datas');
+                    }
+                });
+            };
+
+
+            function GenerateCalendar(events) {// Options available at -->  @*https://fullcalendar.io/download *@
+                $('#calender').fullCalendar('destroy');//initiliazer
+                $('#calender').fullCalendar({
+                    contentHeight: 400,
+                    defaultDate: new Date(),
+                    timeFormat: 'h(:mm)a',
+                    firstDay: 1,
+                    header: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'month,basicWeek,basicDay,agenda'
+                    },
+                    eventLimit: true,
+                    eventColor: '#378006',
+                    events: events,
+                    eventClick: function (calEvent, jsEvent, view) { //parameters=(clicked_item,....)
+                        selectedItem = calEvent;
+                        $('#myModal #eventTitle').text(calEvent.title);
+                        var $description = $('<div/>');
+                        $description.append($('<p/>').html('<b>Start Date:</b>' + calEvent.start.format("dddd, DD MMMM HH:mm a")));
+                        if (calEvent.end != null) {
+                            $description.append($('<p/>').html('<b>End Date:</b>' + calEvent.end.format("dddd, DD MMMM HH:mm a")));
+                        }
+                        $description.append($('<p/>').html('<b>Açıklama:</b>' + calEvent.description));
+                        $('#myModal #pDetails').empty().html($description);
+
+                        $('#myModal').modal();
+                    }
+                });
+            }
+
+            $('#DeleteButton').click(function () {
+                if (selectedItem != null && confirm('Are you sure?')) {
+                    $.ajax({
+                        type: "POST",
+                        url: '/home/DeleteEvent',
+                        data: { 'Id': selectedItem.id },
+                        success: function (data) {
+                            if (data.status) {
+                                GetEvents();
+                            };
+                        },
+                        error: function (error) {
+                            alert('error occured while deleting');
+                        }
+                    })
+                }
+
+            });
+
+
+
+
+        });
+    </script>
+}
